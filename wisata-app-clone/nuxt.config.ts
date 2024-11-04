@@ -12,4 +12,14 @@ export default defineNuxtConfig({
   plugins: [
     '~/plugins/vuetify.js',
   ],
+  app: {
+    head: {
+      link: [
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap'
+        }
+      ]
+    }
+  },
 })

@@ -1,7 +1,7 @@
 <template>
     <v-app>
       <v-main>
-        <v-container max-width="1032px">
+        <v-container>
           <v-card class="ma-5 pa-5">
             <v-img
               src="/img/logo.png"
