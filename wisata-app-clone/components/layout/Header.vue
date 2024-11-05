@@ -7,23 +7,35 @@
                 </nuxt-link>
             </div>
 
-            <div class="d-flex align-center flex-fill justify-center">
-                <v-btn class="appsearchbar-btn" style="height: 40px; max-width: 70%;">
-                    <v-icon left>mdi-magnify</v-icon>
-                    <span class="text-truncate">Fairmont Jakarta</span>
-                    <span>&nbsp;&nbsp;·&nbsp;&nbsp;4 – 8 Mar 2025</span>
-                </v-btn>
-            </div>
+            <v-menu v-model="searchDialog" :close-on-content-click="false" elevation-10>
+                <template v-slot:activator="{ props }">
+                    <div class="d-flex align-center flex-fill justify-center">
+                        <v-btn class="appsearchbar-btn" v-bind="props" style="height: 40px; max-width: 70%;">
+                            <v-icon left>mdi-magnify</v-icon>
+                            <span class="text-truncate">{{ location }}</span>
+                            <span>&nbsp;&nbsp;·&nbsp;&nbsp;{{ dateRangeText }}</span>
+                        </v-btn>
+                    </div>
+                </template>
+
+                <v-card elevation="0" border class="searchnav-wrapper mx-n4 mx-sm-0 px-4 pt-2 rounded-b-lg">
+                    <BookInputCard :location="location" :dateRange="dateRange" :guests="guests" :rooms="rooms"
+                        @update:location="updateLocation" @update:dateRange="updateDateRange"
+                        @update:guests="guests = $event" @update:rooms="rooms = $event"
+                        @update:dateRangeText="dateRangeText = $event" />
+                </v-card>
+            </v-menu>
 
             <div class="d-flex justify-end">
-                <v-menu v-model="dialog" max-width="400" :close-on-content-click="false" origin="right top" offset="16px -75px">
+                <v-menu v-model="signInDialog" max-width="400" :close-on-content-click="false" origin="right bottom"
+                    offset="16px 0px" location="right top">
                     <template v-slot:activator="{ props }">
                         <v-btn color="white" class="signin-btn" v-bind="props">
                             Sign in
                         </v-btn>
                     </template>
 
-                    <v-card class="signin-card">
+                    <v-card elevation="0" border>
                         <SignInCard />
                     </v-card>
                 </v-menu>
@@ -32,20 +44,26 @@
     </v-app-bar>
 </template>
 
-<script>
-import SignInCard from './SignInCard.vue';
+<script setup>
+import { ref, computed } from 'vue'
+import BookInputCard from './BookInputCard.vue'
+import SignInCard from './SignInCard.vue'
 
-export default {
-    name: 'Header',
-    components: {
-        SignInCard
-    },
-    data() {
-        return {
-            dialog: false
-        };
-    }
-};
+const searchDialog = ref(false)
+const signInDialog = ref(false)
+const location = ref('')
+const dateRange = ref([])
+const guests = ref(2)
+const rooms = ref(1)
+const dateRangeText = ref('');
+
+const updateLocation = (newLocation) => {
+    location.value = newLocation
+}
+
+const updateDateRange = (newRange) => {
+    dateRange.value = newRange
+}
 </script>
 
 <style scoped>
@@ -83,7 +101,10 @@ export default {
     letter-spacing: normal;
 }
 
-.signin-card {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.searchnav-wrapper {
+    position: relative;
+    /* width: 100vw; */
+    max-width: 1032px;
+    box-sizing: border-box;
 }
 </style>

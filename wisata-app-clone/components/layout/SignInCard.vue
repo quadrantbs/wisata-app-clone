@@ -1,5 +1,5 @@
 <template>
-    <div class="card-inner p-6 sm:p-8 rounded-lg shadow-md">
+    <div class="card-inner p-6 sm:p-8 rounded-lg">
         <p class="text-xl font-semibold text-center text-gray-800 mb-6">
             Sign in to Wisata App
         </p>
@@ -17,7 +17,6 @@
                 Continue
             </button>
 
-            <!-- Separator for Other Sign-in Options -->
             <div class="flex text-center items-center my-6 text-gray-400">
                 <p class="px-4 text-xs">Or continue with</p>
             </div>
@@ -29,38 +28,31 @@
             <button class="btn-secondary mb-3">
                 <span class="text-sm font-medium">Apple</span>
             </button>
-            <button class="btn-secondary ">
+
+            <button class="btn-secondary">
                 <span class="text-sm font-medium">Whatsapp</span>
             </button>
 
-            <button class="d-flex mt-4 mx-auto "><span>
-                    Create New Account
-                </span></button>
+            <button class="d-flex mt-4 mx-auto">
+                <span>Create New Account</span>
+            </button>
         </form>
     </div>
 </template>
 
-<script>
-export default {
-    name: 'SignInCard',
-    data() {
-        return {
-            username: '',
-            password: ''
-        };
-    },
-    methods: {
-        handleSignIn() {
-            // Handle sign-in logic here
-        },
-        handleContinue() {
-            // Handle continue logic
-        },
-        sendOtp() {
-            // Logic to send OTP
-        }
-    }
-};
+<script setup>
+import { ref } from 'vue'
+
+const username = ref('')
+
+const handleSignIn = () => {
+    // Handle sign-in logic
+}
+
+const handleContinue = () => {
+    // Handle continue logic
+}
+
 </script>
 
 <style scoped>
