@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
-    "nuxt": "^3.13.2",
-    "vue": "latest",
+    "@pinia/nuxt": "^0.7.0",
+    "nuxt": "^3.14.0",
+    "pinia": "^2.2.6",
+    "vue": "^3.5.12",
     "vue-router": "latest",
     "vuetify": "^3.7.0-beta.1"
   }

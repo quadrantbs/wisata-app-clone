@@ -1,6 +1,6 @@
 <template>
     <v-app>
-        <Header />
+        <HomeHeader />
         <v-main>
             <v-container class="container">
                 <NuxtPage />
@@ -12,7 +12,7 @@
 
 <script setup>
 import Footer from '~/components/layout/Footer.vue';
-import Header from '~/components/layout/Header.vue'
+import HomeHeader from '~/components/layout/HomeHeader.vue';
 
 </script>
 

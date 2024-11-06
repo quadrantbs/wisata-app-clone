@@ -1,35 +1,31 @@
 <template>
-    <div class="book-input-card">
-        <div class="input-group d-flex">
-            <LocationSearch :location="localLocation" @update:location="localLocation = $event" />
-        </div>
+    <v-row class="book-input-card border rounded-lg container">
+        <v-col cols="12" md="12" lg="4">
+            <LocationSearch @update:location="localLocation = $event" />
+        </v-col>
 
-        <div class="input-group d-flex">
+        <v-col cols="12" md="6" lg="3">
             <v-menu v-model="dateDialog" :close-on-content-click="false">
                 <template v-slot:activator="{ props }">
                     <v-text-field v-model="dateRangeText" v-bind="props" readonly prepend-inner-icon="mdi-calendar"
                         label="Check In - Check Out" hide-details density="comfortable" variant="outlined"
-                        bg-color="white" />
+                        bg-color="white" color="primary" />
                 </template>
                 <v-card>
-                    <v-date-picker v-model="localDateRange" multiple="range" @update:model-value="updateDateRange" hide-header>
+                    <v-date-picker v-model="localDateRange" multiple="range" @update:modelValue="handleDateSelection"
+                        hide-header>
                     </v-date-picker>
-                    <v-card-title class="text-subtitle-1 pa-4">Choose Date Range</v-card-title>
-                    <v-card-actions class="pa-4">
-                        <v-spacer></v-spacer>
-                        <v-btn color="primary" variant="text" @click="dateDialog = false">
-                            Close
-                        </v-btn>
-                    </v-card-actions>
+                    <v-card-title class="text-subtitle-2 text-center pa-4">{{ dateSelectionText }}</v-card-title>
                 </v-card>
             </v-menu>
-        </div>
+        </v-col>
 
-        <div class="input-group d-flex">
+        <v-col cols="12" md="6" lg="3">
             <v-menu v-model="guestRoomDialog" :close-on-content-click="false">
                 <template v-slot:activator="{ props }">
                     <v-text-field v-bind="props" v-model="guestRoomText" readonly prepend-inner-icon="mdi-account-group"
-                        label="Guests & Rooms" hide-details density="comfortable" variant="outlined" bg-color="white" />
+                        label="Guests & Rooms" hide-details density="comfortable" variant="outlined" bg-color="white"
+                        color="primary" />
                 </template>
                 <v-card min-width="300">
                     <v-card-title class="text-subtitle-1 pa-4">Set Guests & Rooms</v-card-title>
@@ -39,10 +35,10 @@
                                 <span>Guests/Room</span>
                                 <div>
                                     <v-btn icon="mdi-minus" size="small" variant="flat" rounded
-                                        @click="updateGuests(guests - 1)"></v-btn>
-                                    <span class="mx-2">{{ guests }}</span>
+                                        @click="updateGuests(localGuests - 1)"></v-btn>
+                                    <span class="mx-2">{{ localGuests }}</span>
                                     <v-btn icon="mdi-plus" size="small" variant="flat" rounded
-                                        @click="updateGuests(guests + 1)"></v-btn>
+                                        @click="updateGuests(localGuests + 1)"></v-btn>
                                 </div>
                             </div>
 
@@ -50,10 +46,10 @@
                                 <span>Rooms</span>
                                 <div>
                                     <v-btn icon="mdi-minus" size="small" variant="flat" rounded
-                                        @click="updateRooms(rooms - 1)"></v-btn>
-                                    <span class="mx-2">{{ rooms }}</span>
+                                        @click="updateRooms(localRooms - 1)"></v-btn>
+                                    <span class="mx-2">{{ localRooms }}</span>
                                     <v-btn icon="mdi-plus" size="small" variant="flat" rounded
-                                        @click="updateRooms(rooms + 1)"></v-btn>
+                                        @click="updateRooms(localRooms + 1)"></v-btn>
                                 </div>
                             </div>
                         </div>
@@ -66,24 +62,27 @@
                     </v-card-actions>
                 </v-card>
             </v-menu>
-        </div>
+        </v-col>
 
-        <div class="search-btn-wrapper">
-            <v-btn class="bg-primary text-none" color="white" prepend-inner-icon="mdi-magnify" variant="text"
+        <v-col cols="12" md="12" lg="2">
+            <v-btn class="search-btn rounded-lg" color="white" prepend-icon="mdi-magnify" variant="text"
                 @click="performSearch">
                 Search
             </v-btn>
-        </div>
-    </div>
+        </v-col>
+    </v-row>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { defineProps, defineEmits } from 'vue';
 import LocationSearch from './LocationSearch.vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const props = defineProps({
-    location: { type: String, default: '' },
+    location: { type: Object, default: { name: '', type: '', slug: '' } },
     dateRange: { type: Array, default: () => [] },
     guests: { type: Number, default: 2 },
     rooms: { type: Number, default: 1 }
@@ -95,27 +94,70 @@ const emit = defineEmits(['update:location', 'update:dateRange', 'update:guests'
 const dateDialog = ref(false);
 const guestRoomDialog = ref(false);
 
-const localLocation = computed({
-    get: () => props.location,
-    set: (value) => emit('update:location', value)
-});
-const localDateRange = ref(props.dateRange);
+const localLocation = ref(props.location);
 
-const clearLocation = () => { localLocation.value = ''; };
+watch(() => props.location, (newLocation) => {
+    localLocation.value = newLocation;
+});
+
+const localGuests = ref(props.guests);
+const localRooms = ref(props.rooms);
+
+onMounted(() => {
+    localGuests.value = props.guests;
+    localRooms.value = props.rooms;
+});
+
+const localDateRange = ref(props.dateRange);
+const isSelectingCheckIn = ref(true);
+
+// Calculate default date range (2 days after today and the following day)
+const getDefaultDateRange = () => {
+    const today = new Date();
+    const checkIn = new Date(today);
+    checkIn.setDate(today.getDate() + 2);  // 2 days from today
+
+    const checkOut = new Date(checkIn);
+    checkOut.setDate(checkIn.getDate() + 1);  // 1 day after check-in
+
+    return [checkIn, checkOut];  // Format as YYYY-MM-DD
+};
+
+onMounted(() => {
+    // Set default date range if not provided
+    if (!localDateRange.value || localDateRange.value.length === 0) {
+        localDateRange.value = getDefaultDateRange();
+    }
+});
+
+const handleDateSelection = () => {
+    if (isSelectingCheckIn.value) {
+        isSelectingCheckIn.value = false;
+    } else {
+        updateDateRange();
+        dateDialog.value = false;
+        isSelectingCheckIn.value = true;
+    }
+};
+
+const dateSelectionText = computed(() => isSelectingCheckIn.value ? "Select Check-In Date" : "Select Check-Out Date");
+
 const updateDateRange = () => {
     const formattedText = dateRangeText.value;
     emit('update:dateRange', localDateRange.value);
     emit('update:dateRangeText', formattedText);
 };
 
-const updateGuests = (value) => emit('update:guests', Math.max(1, Math.min(10, parseInt(value, 10) || 1)));
-const updateRooms = (value) => emit('update:rooms', Math.max(1, Math.min(8, parseInt(value, 10) || 1)));
+const updateGuests = (value) => {
+    const newGuests = Math.max(1, Math.min(10, parseInt(value, 10)));
+    localGuests.value = newGuests;
+    emit('update:guests', newGuests)
+};
 
-const formatDate = (date) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    const formattedDate = new Intl.DateTimeFormat('en-US', options).format(date);
-    const [month, day, year] = formattedDate.replace(',', '').split(' ');
-    return { day, month, year };
+const updateRooms = (value) => {
+    const newRooms = Math.max(1, Math.min(8, parseInt(value, 10)));
+    localRooms.value = newRooms;
+    emit('update:rooms', newRooms)
 };
 
 const dateRangeText = computed(() => {
@@ -137,38 +179,77 @@ const dateRangeText = computed(() => {
 });
 
 const guestRoomText = computed(() => {
-    const guestDescription = props.guests === 1 ? 'Single Room'
-        : props.guests === 2 ? 'Double Room'
-            : props.guests === 3 ? 'Triple Room'
-                : `Group of ${props.guests}`;
-    return `${guestDescription}, ${props.rooms} Room${props.rooms > 1 ? 's' : ''}`;
+    const guestDescription = localGuests.value === 1 ? 'Single Room'
+        : localGuests.value === 2 ? 'Double Room'
+            : localGuests.value === 3 ? 'Triple Room'
+                : `Group of ${localGuests.value}`;
+    return `${guestDescription}, ${localRooms.value} Room${localRooms.value > 1 ? 's' : ''}`;
 });
 
 const performSearch = () => {
-    console.log('Searching for:', {
-        location: localLocation.value,
-        dateRange: dateRangeText.value,
-        guests: props.guests,
-        rooms: props.rooms
-    });
+
+    if (!localLocation.value || typeof localLocation.value !== 'object') {
+        console.warn('localLocation is not an object:', localLocation.value);
+        return;
+    }
+
+    const { type, slug } = localLocation.value;
+
+    const checkin = localDateRange.value.length > 0
+        ? new Date(localDateRange.value[0]).toISOString().split('T')[0]
+        : '';
+
+    const checkout = localDateRange.value.length > 1
+        ? new Date(localDateRange.value[1]).toISOString().split('T')[0]
+        : '';
+
+    const guest_per_room = localGuests.value;
+    const number_of_room = localRooms.value;
+
+    if (type === 'property') {
+        router.push({
+            path: `/stay/${slug}/`,
+            query: {
+                checkin,
+                checkout,
+                guest_per_room,
+                number_of_room
+            }
+        });
+    } else {
+        router.push({
+            path: `/explore/${slug}/`,
+            query: {
+                checkin,
+                checkout,
+                guest_per_room,
+                number_of_room
+            }
+        });
+    }
 };
+
 </script>
 
-<style scoped>
-.input-group {
-    margin-bottom: 16px;
-    width: 100%;
-    margin: 8px;
-}
 
+
+<style scoped>
 .book-input-card {
     padding: 16px;
     background-color: #ffffff;
-    display: flex;
-    flex-direction: row;
     width: 100%;
-    justify-content: space-between;
-    align-items: center;
     overflow-y: visible;
+    margin: auto;
+    align-items: center;
+}
+
+
+.search-btn {
+    background-color: #007aff;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+    width: 100%;
+    height: 48px;
 }
 </style>

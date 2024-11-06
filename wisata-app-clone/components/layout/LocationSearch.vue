@@ -3,32 +3,22 @@
         <v-menu v-model="menu" :close-on-content-click="false" activator="parent" offset-y>
             <!-- Input Field to trigger the search -->
             <template #activator="{ props }">
-                <v-text-field v-model="localLocation" label="Where are you going?" prepend-inner-icon="mdi-map-marker"
-                    clearable @click:clear="clearLocation" hide-details density="comfortable" variant="outlined"
-                    bg-color="white" @input="handleInput" v-bind="props" />
+                <v-text-field v-model="localLocation.name" label="Where are you going?"
+                    prepend-inner-icon="mdi-map-marker" clearable @click:clear="clearLocation" hide-details
+                    density="comfortable" variant="outlined" bg-color="white" @input="handleInput" v-bind="props"
+                    placeholder="Search for hotels, apartments or villas" color="primary" />
             </template>
 
             <!-- Loading Indicator -->
-            <div v-if="isLoading" class="loading-skeleton">
-                <v-skeleton-loader card>
-                    <template v-slot:default>
-                        <v-card>
-                            <v-card-title>
-                                <v-skeleton-loader :loading="true" type="list-item" />
-                            </v-card-title>
-                            <v-card-text>
-                                <v-skeleton-loader />
-                            </v-card-text>
-                        </v-card>
-                    </template>
-                </v-skeleton-loader>
-            </div>
+            <v-list v-if="isLoading" class="loading-container">
+                <v-progress-circular indeterminate color="primary" />
+            </v-list>
 
             <!-- Search Results -->
             <v-list v-if="sortedResults.length" class="results-list">
-                <v-list-item-group>
+                <div>
                     <v-list-item v-for="(result, index) in sortedResults" :key="index" @click="selectResult(result)">
-                        <v-list-item-content>
+                        <div>
                             <!-- Location Type Badge with Icon -->
                             <div :class="['location-badge', getBadgeClass(result.location_type)]">
                                 <v-icon :class="getIconClass(result.location_type)" small>
@@ -39,9 +29,9 @@
                             <!-- Display Name and Name Suffix -->
                             <v-list-item-title class="result-item">{{ result.name }}</v-list-item-title>
                             <v-list-item-subtitle>{{ result.name_suffix }}</v-list-item-subtitle>
-                        </v-list-item-content>
+                        </div>
                     </v-list-item>
-                </v-list-item-group>
+                </div>
             </v-list>
         </v-menu>
     </div>
@@ -52,27 +42,30 @@ import { ref, computed } from 'vue';
 import { defineProps, defineEmits } from 'vue';
 
 const props = defineProps({
-    location: { type: String, default: '' }
+    location: { type: String, default: '' },
+    type: { type: String, default: '' },
+    slug: { type: String, default: '' }
 });
 
 const emit = defineEmits(['update:location']);
 
 const menu = ref(false);
-const clearLocation = () => {
-    localLocation.value = '';
-    locations.value = [];
-    properties.value = [];
-};
 
 const locations = ref([]);
 const properties = ref([]);
 const isLoading = ref(false);
 const loadingTimeout = ref(null);
+const localLocation = ref({ name: '', type: '', slug: '' });
 
-const localLocation = computed({
-    get: () => props.location,
-    set: (value) => emit('update:location', value)
+watch(localLocation, (newValue) => {
+    emit('update:location', newValue);
 });
+
+const clearLocation = () => {
+    localLocation.value = { name: '', type: '', slug: '' };
+    locations.value = [];
+    properties.value = [];
+};
 
 const sortedResults = computed(() => {
     const combined = [...locations.value, ...properties.value];
@@ -80,14 +73,12 @@ const sortedResults = computed(() => {
 });
 
 const handleInput = (event) => {
-    localLocation.value = event.target.value;
+    localLocation.value.name = event.target.value;
 
     if (loadingTimeout.value) {
         clearTimeout(loadingTimeout.value);
     }
-
-    console.log(menu.value)
-    if (!menu.value) {
+    if (!sortedResults.value.length) {
         isLoading.value = true;
     }
 
@@ -97,7 +88,7 @@ const handleInput = (event) => {
 };
 
 const fetchData = async () => {
-    if (localLocation.value.length < 3) {
+    if (localLocation.value.name.length < 3) {
         locations.value = [];
         properties.value = [];
         menu.value = false;
@@ -108,14 +99,14 @@ const fetchData = async () => {
     menu.value = true;
 
     try {
-        const locationResponse = await fetch(`https://project-technical-test-api.up.railway.app/location/search?query=${localLocation.value}`, {
+        const locationResponse = await fetch(`https://project-technical-test-api.up.railway.app/location/search?query=${localLocation.value.name}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
         });
 
-        const propertyResponse = await fetch(`https://project-technical-test-api.up.railway.app/property/search?query=${localLocation.value}`, {
+        const propertyResponse = await fetch(`https://project-technical-test-api.up.railway.app/property/search?query=${localLocation.value.name}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -136,11 +127,17 @@ const fetchData = async () => {
 };
 
 const selectResult = (result) => {
-    localLocation.value = result.name;
-    menu.value = false;
-    console.log(localLocation)
+    if (result && typeof result === 'object') {
+        localLocation.value = {
+            name: result.name,
+            type: result.location_type,
+            slug: result.slug
+        };
+        menu.value = false;
+    } else {
+        console.warn('Invalid result:', result);
+    }
 };
-
 
 const getLocationIcon = (type) => {
     const icons = {
@@ -179,18 +176,21 @@ const getIconClass = (type) => {
     position: relative;
 }
 
-.loading-skeleton {
-    max-height: 200px;
-    min-width: 280px;
-    width: 280px;
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     height: 200px;
+    width: 100%;
+    background-color: white;
 }
+
 
 .results-list {
     max-height: 420px;
     overflow-y: auto;
     width: 100%;
-    max-width: 280px;
+    /* max-width: 280px; */
 }
 
 .result-item {
@@ -214,6 +214,7 @@ const getIconClass = (type) => {
     /* Light green */
     color: #388e3c;
     /* Dark green */
+    width: fit-content;
 }
 
 .default-badge {
@@ -221,6 +222,7 @@ const getIconClass = (type) => {
     /* Light purple */
     color: #6a1b9a;
     /* Dark purple */
+    width: fit-content;
 }
 
 .icon-green {
