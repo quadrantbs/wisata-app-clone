@@ -1,12 +1,12 @@
 <template>
     <v-app>
         <Header />
-        <v-main>
+        <v-main class="mainRef">
             <v-container class="container">
                 <NuxtPage />
             </v-container>
+            <Footer />
         </v-main>
-        <Footer />
     </v-app>
 </template>
 
@@ -16,6 +16,4 @@ import Header from '~/components/layout/Header.vue'
 
 </script>
 
-<style scoped>
-
-</style>
+<style scoped></style>

@@ -6,7 +6,9 @@
                 <v-text-field v-model="localLocation.name" label="Where are you going?"
                     prepend-inner-icon="mdi-map-marker" clearable @click:clear="clearLocation" hide-details
                     density="comfortable" variant="outlined" bg-color="white" @input="handleInput" v-bind="props"
-                    placeholder="Search for hotels, apartments or villas" color="primary" />
+                    placeholder="Search for hotels, apartments or villas" color="primary" 
+                    @click="handleInput"
+                    />
             </template>
 
             <!-- Loading Indicator -->
@@ -38,8 +40,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { defineProps, defineEmits } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import { defineProps } from 'vue';
+
+const selectedStore = useSelectedStore();
 
 const props = defineProps({
     location: { type: String, default: '' },
@@ -50,12 +54,21 @@ const props = defineProps({
 const emit = defineEmits(['update:location']);
 
 const menu = ref(false);
-
 const locations = ref([]);
 const properties = ref([]);
 const isLoading = ref(false);
 const loadingTimeout = ref(null);
 const localLocation = ref({ name: '', type: '', slug: '' });
+
+onMounted(() => {
+    if (selectedStore.selectedData) {
+        localLocation.value = {
+            name: `${selectedStore.selectedData.name}, ${selectedStore.selectedData.name_suffix}`,
+            type: selectedStore.selectedData.location_type,
+            slug: selectedStore.selectedData.slug
+        };
+    }
+});
 
 watch(localLocation, (newValue) => {
     emit('update:location', newValue);
@@ -129,7 +142,7 @@ const fetchData = async () => {
 const selectResult = (result) => {
     if (result && typeof result === 'object') {
         localLocation.value = {
-            name: result.name,
+            name: `${result.name}, ${result.name_suffix}`,
             type: result.location_type,
             slug: result.slug
         };

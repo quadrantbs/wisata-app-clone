@@ -13,9 +13,9 @@
                     placeholder="Enter your username or email" />
             </div>
 
-            <button type="button" class="btn-primary" @click="handleContinue">
+            <v-btn class="btn-primary btn" color="primary" @click="handleContinue">
                 Continue
-            </button>
+            </v-btn>
 
             <div class="flex text-center items-center my-6 text-gray-400">
                 <p class="px-4 text-xs">Or continue with</p>
@@ -82,18 +82,14 @@ const handleContinue = () => {
 }
 
 .btn-primary {
+    margin-top: 8px;
     width: 100%;
-    padding: 0.75rem;
-    background-color: #3b82f6;
-    color: #ffffff;
-    font-weight: 500;
     text-align: center;
-    border-radius: 0.375rem;
     transition: background-color 0.2s;
 }
 
 .btn-primary:hover {
-    background-color: #2563eb;
+    
 }
 
 .btn-secondary {

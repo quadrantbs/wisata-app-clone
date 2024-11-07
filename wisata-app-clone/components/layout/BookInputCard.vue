@@ -13,7 +13,8 @@
                 </template>
                 <v-card>
                     <v-date-picker v-model="localDateRange" multiple="range" @update:modelValue="handleDateSelection"
-                        hide-header>
+                        hide-header
+                        :min="localDateRange[0] && localDateRange.length === 1 ? localDateRange[0] : new Date()">
                     </v-date-picker>
                     <v-card-title class="text-subtitle-2 text-center pa-4">{{ dateSelectionText }}</v-card-title>
                 </v-card>
@@ -64,9 +65,9 @@
             </v-menu>
         </v-col>
 
-        <v-col cols="12" md="12" lg="2">
-            <v-btn class="search-btn rounded-lg" color="white" prepend-icon="mdi-magnify" variant="text"
-                @click="performSearch">
+        <v-col cols="12" md="12" lg="2" class="d-flex justify-center">
+            <v-btn class="btn rounded-lg w-100" color="primary" prepend-icon="mdi-magnify" @click="performSearch"
+                height="48px">
                 Search
             </v-btn>
         </v-col>
@@ -75,10 +76,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { defineProps, defineEmits } from 'vue';
+import { defineProps } from 'vue';
 import LocationSearch from './LocationSearch.vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
+const route = useRoute();
 const router = useRouter();
 
 const props = defineProps({
@@ -106,6 +108,38 @@ const localRooms = ref(props.rooms);
 onMounted(() => {
     localGuests.value = props.guests;
     localRooms.value = props.rooms;
+
+    // Check for query parameters only on the stay/[slug] page
+    if (route.query.checkin && route.query.checkout) {
+        const checkinDate = new Date(route.query.checkin);
+        const checkoutDate = new Date(route.query.checkout);
+
+        // Create an array of dates from checkin to checkout (inclusive)
+        const dateRange = [];
+        let currentDate = checkinDate;
+
+        while (currentDate <= checkoutDate) {
+            dateRange.push(new Date(currentDate)); // Push a copy of the current date
+            currentDate.setDate(currentDate.getDate() + 1); // Move to the next day
+        }
+
+        // Store the date range in localDateRange
+        localDateRange.value = dateRange;
+    }
+
+
+    if (route.query.guest_per_room) {
+        localGuests.value = parseInt(route.query.guest_per_room);
+    }
+
+    if (route.query.number_of_room) {
+        localRooms.value = parseInt(route.query.number_of_room);
+    }
+
+    // Set default date range if not provided
+    if (!localDateRange.value || localDateRange.value.length === 0) {
+        localDateRange.value = getDefaultDateRange();
+    }
 });
 
 const localDateRange = ref(props.dateRange);
@@ -115,24 +149,18 @@ const isSelectingCheckIn = ref(true);
 const getDefaultDateRange = () => {
     const today = new Date();
     const checkIn = new Date(today);
-    checkIn.setDate(today.getDate() + 2);  // 2 days from today
+    checkIn.setDate(today.getDate() + 2);
 
     const checkOut = new Date(checkIn);
-    checkOut.setDate(checkIn.getDate() + 1);  // 1 day after check-in
+    checkOut.setDate(checkIn.getDate() + 1);
 
-    return [checkIn, checkOut];  // Format as YYYY-MM-DD
+    return [checkIn, checkOut];
 };
-
-onMounted(() => {
-    // Set default date range if not provided
-    if (!localDateRange.value || localDateRange.value.length === 0) {
-        localDateRange.value = getDefaultDateRange();
-    }
-});
 
 const handleDateSelection = () => {
     if (isSelectingCheckIn.value) {
         isSelectingCheckIn.value = false;
+
     } else {
         updateDateRange();
         dateDialog.value = false;
@@ -140,12 +168,23 @@ const handleDateSelection = () => {
     }
 };
 
+// Watch for changes to the dateDialog
+watch(dateDialog, (newVal) => {
+    if (!newVal) {
+        if (localDateRange.value.length === 1) {
+            const nextDay = new Date(localDateRange.value[0]);
+            nextDay.setDate(nextDay.getDate() + 1);
+            localDateRange.value.push(nextDay);
+            updateDateRange();
+        }
+    }
+});
+
 const dateSelectionText = computed(() => isSelectingCheckIn.value ? "Select Check-In Date" : "Select Check-Out Date");
 
 const updateDateRange = () => {
-    const formattedText = dateRangeText.value;
     emit('update:dateRange', localDateRange.value);
-    emit('update:dateRangeText', formattedText);
+    emit('update:dateRangeText', dateRangeText.value);
 };
 
 const updateGuests = (value) => {
@@ -160,23 +199,7 @@ const updateRooms = (value) => {
     emit('update:rooms', newRooms)
 };
 
-const dateRangeText = computed(() => {
-    if (localDateRange.value.length >= 2) {
-        const startDate = formatDate(new Date(localDateRange.value[0]));
-        const endDate = formatDate(new Date(localDateRange.value[localDateRange.value.length - 1]));
-        if (startDate.year === endDate.year) {
-            return startDate.month === endDate.month
-                ? `${startDate.day} - ${endDate.day} ${startDate.month} ${startDate.year}`
-                : `${startDate.day} ${startDate.month} - ${endDate.day} ${endDate.month} ${startDate.year}`;
-        } else {
-            return `${startDate.day} ${startDate.month} ${startDate.year} - ${endDate.day} ${endDate.month} ${endDate.year}`;
-        }
-    } else if (localDateRange.value.length === 1) {
-        const singleDate = formatDate(new Date(localDateRange.value[0]));
-        return `${singleDate.day} ${singleDate.month} ${singleDate.year}`;
-    }
-    return '';
-});
+const dateRangeText = computed(() => formatRangeDate(localDateRange.value[0], localDateRange.value[localDateRange.value.length - 1]));
 
 const guestRoomText = computed(() => {
     const guestDescription = localGuests.value === 1 ? 'Single Room'
@@ -187,21 +210,15 @@ const guestRoomText = computed(() => {
 });
 
 const performSearch = () => {
-
-    if (!localLocation.value || typeof localLocation.value !== 'object') {
-        console.warn('localLocation is not an object:', localLocation.value);
-        return;
-    }
-
     const { type, slug } = localLocation.value;
 
     const checkin = localDateRange.value.length > 0
-        ? new Date(localDateRange.value[0]).toISOString().split('T')[0]
-        : '';
-
+        ? new Date(localDateRange.value[0]).toLocaleDateString('en-CA')
+        : new Date().toLocaleDateString('en-CA');
     const checkout = localDateRange.value.length > 1
-        ? new Date(localDateRange.value[1]).toISOString().split('T')[0]
-        : '';
+        ? new Date(localDateRange.value[localDateRange.value.length - 1]).toLocaleDateString('en-CA')
+        : new Date(new Date(localDateRange.value[0]).setDate(new Date(localDateRange.value[0]).getDate() + 1)).toLocaleDateString('en-CA');
+
 
     const guest_per_room = localGuests.value;
     const number_of_room = localRooms.value;
@@ -241,15 +258,5 @@ const performSearch = () => {
     overflow-y: visible;
     margin: auto;
     align-items: center;
-}
-
-
-.search-btn {
-    background-color: #007aff;
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: normal;
-    width: 100%;
-    height: 48px;
 }
 </style>
