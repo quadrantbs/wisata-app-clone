@@ -27,6 +27,9 @@
     background-color: #f5f5f5;
     color: #333;
     max-height: 72px;
+    bottom: 0;
+    position: relative;
+    width: 100%;
 }
 
 .link {

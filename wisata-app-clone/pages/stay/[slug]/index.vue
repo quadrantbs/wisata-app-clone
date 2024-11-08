@@ -33,13 +33,13 @@
     </v-tabs>
     <v-tabs-window v-model="tab">
         <v-tabs-window-item value="deals">
-            <DealsSection />
+            <DealsSection :fetchingAvailability="fetchingAvailability" />
         </v-tabs-window-item>
         <v-tabs-window-item value="photos">
-            Photos Goes Here
+            <PhotosSection />
         </v-tabs-window-item>
         <v-tabs-window-item value="info">
-            Info Goes Here
+            <InfoSection />
         </v-tabs-window-item>
     </v-tabs-window>
 </template>
@@ -49,6 +49,8 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAvailabilityStore } from '~/stores/useAvailabilityStore';
 import DealsSection from '~/components/stay/DealsSection.vue';
+import PhotosSection from '~/components/stay/PhotosSection.vue';
+import InfoSection from '~/components/stay/InfoSection.vue';
 
 const route = useRoute();
 const availabilityStore = useAvailabilityStore();
@@ -61,24 +63,30 @@ const guestsPerRoom = ref(2);
 const rooms = ref(1);
 const propertyId = ref(null);
 const tab = ref('deals');
+const fetchingAvailability = ref(false);
 
 const fetchAvailability = async () => {
     const url = `https://project-technical-test-api.up.railway.app/stay/availability/${propertyId.value}?checkin=${checkinDate.value}&checkout=${checkoutDate.value}&guest_per_room=${guestsPerRoom.value}&number_of_room=${rooms.value}`;
     try {
+        availabilityStore.setAvailabilityData(null);
+        fetchingAvailability.value = true;
+        // console.log('Fetching availability:', fetchingAvailability.value);
         const response = await fetch(url);
         const data = await response.json();
         availabilityStore.setAvailabilityData(data);
     } catch (error) {
         console.error('Error fetching availability:', error);
+    } finally {
+        fetchingAvailability.value = false;
+        // console.log('Fetching availability:', fetchingAvailability.value);
     }
 };
 
 const fetchProperty = async () => {
-    const url = `https://project-technical-test-api.up.railway.app/property/content?id=${propertyId.value}`;
+    const url = `https://project-technical-test-api.up.railway.app/property/content?id=${propertyId.value}&include=image&include=room&include=important_info&include=general_info`;
     try {
         const response = await fetch(url);
         const data = await response.json();
-        // console.log(data)
         propertyStore.setPropertyData(data[propertyId.value]);
     } catch (error) {
         console.error('Error fetching property:', error);
@@ -91,7 +99,7 @@ watchEffect(() => {
     checkoutDate.value = route.query.checkout;
     guestsPerRoom.value = parseInt(route.query.guest_per_room);
     rooms.value = parseInt(route.query.number_of_room);
-    propertyId.value = slug.value.split('-').pop();
+    propertyId.value = slug.value?.split('-').pop();
     fetchAvailability();
     fetchProperty();
 });
